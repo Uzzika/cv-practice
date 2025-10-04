@@ -111,6 +111,44 @@ def apply_vignette(image, strength=0.8):
 
     return vignette_image.astype(np.uint8)
 
+def apply_pixelation(image, x, y, width, height, pixel_size = 10):
+    """
+    Применяет пикселизацию к заданной прямоугольной области изображения
+    
+    Параметры:
+    image - исходное изображение
+    x, y - координаты верхнего левого угла области
+    width, height - ширина и высота области
+    pixel_size - размер пикселя (чем больше, тем сильнее пикселизация)
+    
+    Возвращает:
+    pixelated_image - изображение с пикселизированной областью
+    """
+    pixelated_image = image.copy()
+
+    x = max(0, min(x, image.shape[1] - 1))
+    y = max(0, min(y, image.shape[0] - 1))
+    width = min(width, image.shape[1] - x)
+    height = min(height, image.shape[0] - y)
+
+    region = pixelated_image[y:y + height, x:x + width]
+
+    for i in range(0, height, pixel_size):
+        for j in range(0, width, pixel_size):
+            block_height = min(pixel_size, height - i)
+            block_width = min(pixel_size, width - j)
+
+            block = region[i:i + block_height, j:j + block_width]
+
+            if len(image.shape) == 3:
+                avg_color = np.mean(block, axis =(0, 1))
+            else:
+                avg_color = np.mean(block)
+
+            region[i:i + block_height, j:j + block_width] = avg_color
+    
+    return pixelated_image
+
 # ===== ДЕМОНСТРАЦИЯ ФУНКЦИЙ =====
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -135,11 +173,21 @@ if __name__ == "__main__":
         print("\n=== Эффект виньетки ===")
         vignette = apply_vignette(image_rgb)
         print("Эффект виньетки применен!")
+
+        print("\n=== Пикселизация области ===")
+        height, width = image_rgb.shape[:2]
+        center_x, center_y = width // 2, height // 2
+        pixelated = apply_pixelation(image_rgb, 
+                                   center_x - 50, center_y - 50, 
+                                   200, 200, pixel_size=15)
+        print("Пикселизация применена!")
         
         cv2.imshow('Original', image)
         cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
         cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
         cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Pixelation', cv2.cvtColor(pixelated, cv2.COLOR_RGB2BGR))
+
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     else:
