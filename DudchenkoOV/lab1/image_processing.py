@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import os
 
 # ===== ФУНКЦИЯ ИЗМЕНЕНИЯ РАЗРЕШЕНИЯ =====
 def change_resolution(image, new_width, new_height):
@@ -17,56 +18,78 @@ def change_resolution(image, new_width, new_height):
     """
     old_height, old_width = image.shape[:2]
 
-    # Вычисляем коэффициенты масштабирования
     scale_x = old_width / new_width
     scale_y = old_height / new_height
 
-    # Создаем пустое изображение нового размера
     if len(image.shape) == 3:
         resized_image = np.zeros((new_height, new_width, image.shape[2]), dtype=image.dtype)
     else:
         resized_image = np.zeros((new_height, new_width), dtype=image.dtype)
 
-    # Заполняем новое изображение пикселями из исходного
     for y in range(new_height):
         for x in range(new_width):
-            # Вычисляем координаты в исходном изображении
             old_x = int(x * scale_x)
             old_y = int(y * scale_y)
 
-            # Проверяем границы
             old_x = min(old_x, old_width - 1)
             old_y = min(old_y, old_height - 1)
 
-            # Копируем пиксель
             resized_image[y, x] = image[old_y, old_x]
     
     return resized_image
 
+def apply_sepia(image_rgb):
+    """
+    Применяет фотоэффект сепии к изображению
+    
+    Параметры:
+    image - исходное изображение в формате RGB
+    
+    Возвращает:
+    sepia_image - изображение с эффектом сепии
+    """
+    sepia_image = image_rgb.copy().astype(np.float32)
+    
+    red = sepia_image[:, :, 0]
+    green = sepia_image[:, :, 1]
+    blue = sepia_image[:, :, 2]
+    
+    new_red = red * 0.393 + green * 0.769 + blue * 0.189
+    new_green = red * 0.349 + green * 0.686 + blue * 0.168
+    new_blue = red * 0.272 + green * 0.534 + blue * 0.131
+    
+    new_red = np.clip(new_red, 0, 255)
+    new_green = np.clip(new_green, 0, 255)
+    new_blue = np.clip(new_blue, 0, 255)
+    
+    sepia_image[:, :, 0] = new_red
+    sepia_image[:, :, 1] = new_green
+    sepia_image[:, :, 2] = new_blue
+
+    return sepia_image.astype(np.uint8)
+
 # ===== ДЕМОНСТРАЦИЯ ФУНКЦИЙ =====
 if __name__ == "__main__":
-    # Загружаем изображение
-    image = cv2.imread('test_image.jpg')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    image_path = os.path.join(script_dir, 'test_image.jpg')
+
+    image = cv2.imread(image_path)
 
     if image is not None:
         print("Изображение успешно загружено!")
         print(f"Размер исходного изображения: {image.shape}")
-        
-        # Конвертируем в RGB для корректной работы с цветами
+
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Демонстрация изменения разрешения
+
         print("\n=== Изменение разрешения ===")
         resized = change_resolution(image_rgb, 300, 200)
         print(f"Размер после изменения: {resized.shape}")
         
-        # Демонстрация эффекта сепии
         print("\n=== Эффект сепии ===")
         sepia = apply_sepia(image_rgb)
         print("Эффект сепии применен!")
         
-        # Показываем результаты
-        cv2.imshow('Original', image)  # Исходное (BGR)
+        cv2.imshow('Original', image)
         cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
         cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
         cv2.waitKey(0)
