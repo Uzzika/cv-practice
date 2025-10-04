@@ -68,6 +68,49 @@ def apply_sepia(image_rgb):
 
     return sepia_image.astype(np.uint8)
 
+# ===== ФУНКЦИЯ ЭФФЕКТА ВИНЬЕТКИ =====
+def apply_vignette(image, strength=0.8):
+    """
+    Применяет эффект виньетки (затемнение по краям изображения)
+    
+    Параметры:
+    image - исходное изображение
+    strength - сила эффекта (0-1), где 1 - максимальное затемнение
+    
+    Возвращает:
+    vignette_image - изображение с эффектом виньетки
+    """
+
+    vignette_image = image.copy().astype(np.float32)
+
+    height, width = image.shape[:2]
+
+    x = np.arange(width)
+    y = np.arange(height)
+
+    # np.meshgrid создает две матрицы координат:
+    # x_grid - каждая строка содержит x-координаты
+    # y_grid - каждый столбец содержит y-координаты
+    x_grid, y_grid = np.meshgrid(x, y)
+
+    x_normalized = (x_grid - width / 2) / (width / 2)
+    y_normalized = (y_grid - height / 2) / (height / 2)
+
+    distance = np.sqrt(x_normalized ** 2 + y_normalized ** 2)
+    distance = np.clip(distance, 0, 1)
+
+    vignette_mask = 1 - distance * strength
+
+    if len(image.shape) == 3:
+        for channel in range(3):
+            vignette_image[:, :, channel] *= vignette_mask
+    else:
+        vignette_mask *= vignette_mask
+
+    vignette_image = np.clip(vignette_image, 0, 255)
+
+    return vignette_image.astype(np.uint8)
+
 # ===== ДЕМОНСТРАЦИЯ ФУНКЦИЙ =====
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -89,9 +132,14 @@ if __name__ == "__main__":
         sepia = apply_sepia(image_rgb)
         print("Эффект сепии применен!")
         
+        print("\n=== Эффект виньетки ===")
+        vignette = apply_vignette(image_rgb)
+        print("Эффект виньетки применен!")
+        
         cv2.imshow('Original', image)
         cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
         cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     else:
