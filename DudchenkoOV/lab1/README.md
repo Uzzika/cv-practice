@@ -5,10 +5,10 @@
 
 ## Структура проекта
 DudchenkoOV/
---lab1/
-----image_processing.py
-----README.md
-----test_image.jpg
+-lab1/
+- image_processing.py
+- README.md
+- test_image.jpg
 
 
 ## Реализованные функции
