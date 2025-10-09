@@ -192,8 +192,7 @@ def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), bord
     """
     bordered_image = image.copy()
     height, width = image.shape[:2]
-    
-    # Создаем маску для рамки (изначально все False)
+
     border_mask = np.zeros((height, width), dtype=bool)
     
     if border_type == "wave":
@@ -228,7 +227,6 @@ def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), bord
             bordered_image[border_mask] = border_color[0]
 
     elif border_type == "zigzag":
-        # Зигзагообразная рамка
         zigzag_period = border_width * 2
         
         for i in range(border_width):
@@ -269,7 +267,6 @@ def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), bord
                         bordered_image[y, width - 1 - i] = border_color
 
     elif border_type == "dots":
-        # Точечная рамка
         dot_spacing = border_width
         
         for i in range(0, border_width, 2):
@@ -290,7 +287,6 @@ def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), bord
                 bordered_image[y, width - 1 - i] = border_color
 
     elif border_type == "triangles":
-        # Треугольная рамка
         triangle_width = border_width * 2
         
         for i in range(border_width):
@@ -324,6 +320,82 @@ def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), bord
 
     return bordered_image
 
+def apply_lens_flare(image, flare_radius=50, intensity=0.7):
+    """
+    Накладывает эффект белого блика объектива камеры в центре изображения
+    
+    Параметры:
+    image - исходное изображение
+    flare_radius - радиус блика в пикселях
+    intensity - интенсивность эффекта (0-1)
+    
+    Возвращает:
+    image_with_flare - изображение с эффектом блика
+    """
+    image_with_flare = image.copy().astype(np.float32)
+    height, width = image.shape[:2]
+    
+    print(f"Создаем эффект блика объектива")
+    print(f"Размер изображения: {width}x{height}")
+    print(f"Радиус блика: {flare_radius}")
+    print(f"Интенсивность: {intensity}")
+    
+    center_x, center_y = width // 2, height // 2
+    
+    for y in range(max(0, center_y - flare_radius), min(height, center_y + flare_radius + 1)):
+        for x in range(max(0, center_x - flare_radius), min(width, center_x + flare_radius + 1)):
+            distance = math.sqrt((x - center_x)**2 + (y - center_y)**2)
+
+            if distance <= flare_radius:
+                normalized_distance = distance / flare_radius
+                pixel_intensity = math.exp(-(normalized_distance ** 2) * 3) * intensity
+
+                for channel in range(3):
+                    image_with_flare[y, x, channel] += 255 * pixel_intensity
+    
+    image_with_flare = np.clip(image_with_flare, 0, 255)
+    
+    return image_with_flare.astype(np.uint8)
+
+def apply_watercolor_texture(image, texture_strength=0.3):
+    """
+    Накладывает текстуру акварельной бумаги на изображение
+    
+    Параметры:
+    image - исходное изображение
+    texture_strength - сила текстуры (0-1), где 1 - максимальный эффект
+    
+    Возвращает:
+    textured_image - изображение с текстурой акварельной бумаги
+    """
+    textured_image = image.copy().astype(np.float32)
+    height, width = image.shape[:2]
+    
+    print(f"Накладываем текстуру акварельной бумаги")
+    print(f"Размер изображения: {width}x{height}")
+    print(f"Сила текстуры: {texture_strength}")
+
+    paper_texture = np.random.rand(height, width) * 255
+
+    for scale in [5, 10, 20]:
+        coarse_noise = np.random.rand(height//scale, width//scale) * 255
+        coarse_noise = cv2.resize(coarse_noise, (width, height), interpolation=cv2.INTER_NEAREST)
+        paper_texture = paper_texture * 0.7 + coarse_noise * 0.3
+
+    paper_texture = paper_texture - np.min(paper_texture)
+    paper_texture = paper_texture / np.max(paper_texture) * 255
+
+    if len(image.shape) == 3:
+        for channel in range(3):
+            blend = textured_image[:, :, channel] * (paper_texture / 255)
+            textured_image[:, :, channel] = textured_image[:, :, channel] * (1 - texture_strength) + blend * texture_strength
+    else:
+        blend = textured_image * (paper_texture / 255)
+        textured_image = textured_image * (1 - texture_strength) + blend * texture_strength
+    
+    textured_image = np.clip(textured_image, 0, 255)
+    return textured_image.astype(np.uint8)
+
 # ===== ДЕМОНСТРАЦИЯ ФУНКЦИЙ =====
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -336,6 +408,7 @@ if __name__ == "__main__":
         print(f"Размер исходного изображения: {image.shape}")
 
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        height, width = image_rgb.shape[:2]
 
         print("\n=== Изменение разрешения ===")
         resized = change_resolution(image_rgb, 300, 200)
@@ -350,7 +423,6 @@ if __name__ == "__main__":
         print("Эффект виньетки применен!")
 
         print("\n=== Пикселизация области ===")
-        height, width = image_rgb.shape[:2]
         center_x, center_y = width // 2, height // 2
         pixelated = apply_pixelation(image_rgb, 
                                    center_x - 50, center_y - 50, 
@@ -363,33 +435,31 @@ if __name__ == "__main__":
 
         print("\n=== Фигурные рамки ===")
         wave_border = add_decorative_border(image, border_width=25, 
-                                        border_color=(0, 255, 255),  # Желтый в BGR
+                                        border_color=(0, 255, 255),
                                         border_type="wave")
         
-        zigzag_border = add_decorative_border(image, border_width=20,
-                                            border_color=(255, 0, 255),  # Пурпурный в BGR
-                                            border_type="zigzag")
+        print("\n=== Эффект бликов объектива ===")
+        lens_flare_small = apply_lens_flare(image_rgb, 
+                                         flare_radius=30, 
+                                         intensity=0.8)
+        print("Эффект бликов применен!")
+
+        print("\n=== Текстура акварельной бумаги ===")
+        texture_light = apply_watercolor_texture(image_rgb, texture_strength=0.2)
+        texture_medium = apply_watercolor_texture(image_rgb, texture_strength=0.5)
+        texture_strong = apply_watercolor_texture(image_rgb, texture_strength=0.8)
+        print("Текстура акварельной бумаги применена!")
         
-        dots_border = add_decorative_border(image, border_width=15,
-                                        border_color=(0, 165, 255),  # Оранжевый в BGR
-                                        border_type="dots")
-        
-        triangles_border = add_decorative_border(image, border_width=30,
-                                            border_color=(255, 255, 0),  # Голубой в BGR
-                                            border_type="triangles")
-        
-        print("Фигурные рамки применены!")
-        
-        # cv2.imshow('Original', image)
-        # cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
-        # cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
-        # cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
-        # cv2.imshow('Pixelation', cv2.cvtColor(pixelated, cv2.COLOR_RGB2BGR))
-        # cv2.imshow('Red Border (15px)', bordered1)
+        # Отображение всех результатов
+        cv2.imshow('Original', image)
+        cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Pixelation', cv2.cvtColor(pixelated, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Red Border (15px)', bordered1)
         cv2.imshow('Wave Border', wave_border)
-        cv2.imshow('Zigzag Border', zigzag_border)
-        cv2.imshow('Dots Border', dots_border)
-        cv2.imshow('Triangles Border', triangles_border)
+        cv2.imshow('Lens Flare Small', cv2.cvtColor(lens_flare_small, cv2.COLOR_RGB2BGR))
+        cv2.imshow('Texture Light', cv2.cvtColor(texture_light, cv2.COLOR_RGB2BGR))
 
         cv2.waitKey(0)
         cv2.destroyAllWindows()
