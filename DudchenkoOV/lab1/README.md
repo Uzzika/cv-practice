@@ -4,8 +4,7 @@
 Библиотека фильтров для обработки изображений с использованием базовых операций OpenCV и NumPy.
 
 ## Структура проекта
-DudchenkoOV/
--lab1/
+DudchenkoOV/lab1/
 - image_processing.py
 - README.md
 - test_image.jpg
