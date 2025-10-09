@@ -5,10 +5,10 @@
 
 ## Структура проекта
 DudchenkoOV/
-├── lab1/
-│ ├── image_processing.py
-│ ├── README.md
-│ └── test_image.jpg
+--lab1/
+----image_processing.py
+----README.md
+----test_image.jpg
 
 
 ## Реализованные функции
@@ -75,7 +75,8 @@ vignette = apply_vignette(image_rgb)
 # ... и другие функции
 ```
 
-### Требования
-Python 3.x
-OpenCV
-NumPy
+## Требования
+
+- Python 3.x
+- OpenCV
+- NumPy
