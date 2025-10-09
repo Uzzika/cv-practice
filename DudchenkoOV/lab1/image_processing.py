@@ -149,6 +149,181 @@ def apply_pixelation(image, x, y, width, height, pixel_size = 10):
     
     return pixelated_image
 
+def add_rectangular_border(image, border_width=10, border_color=(255, 0, 0)):
+    """
+    Добавляет прямоугольную одноцветную рамку к изображению
+    
+    Параметры:
+    image - исходное изображение
+    border_width - толщина рамки в пикселях
+    border_color - цвет рамки в формате BGR (синий, зеленый, красный)
+    
+    Возвращает:
+    bordered_image - изображение с рамкой
+    """
+
+    bordered_image = image.copy()
+    height, width = image.shape[:2]
+
+    print(f"Размер изображения: {width}x{height}")
+    print(f"Толщина рамки: {border_width} пикселей")
+    print(f"Цвет рамки: {border_color}")
+
+    bordered_image[0:border_width, 0:width] = border_color
+    bordered_image[height-border_width:height, 0:width] = border_color
+    bordered_image[0:height, 0:border_width] = border_color
+    bordered_image[0:height, width-border_width:width] = border_color
+    
+    return bordered_image
+
+def add_decorative_border(image, border_width=20, border_color=(255, 0, 0), border_type="wave"):
+    """
+    Добавляет фигурную рамку к изображению
+    
+    Параметры:
+    image - исходное изображение
+    border_width - толщина рамки в пикселях
+    border_color - цвет рамки в формате BGR
+    border_type - тип рамки:
+        "wave" - волнистая
+        "zigzag" - зигзагообразная
+        "dots" - точечная
+        "triangles" - треугольная
+    """
+    bordered_image = image.copy()
+    height, width = image.shape[:2]
+    
+    # Создаем маску для рамки (изначально все False)
+    border_mask = np.zeros((height, width), dtype=bool)
+    
+    if border_type == "wave":
+        amplitude = border_width * 0.4
+        frequency = 0.05
+        
+        # Верхняя граница
+        for x in range(width):
+            wave_height = border_width - int(amplitude * math.sin(x * frequency))
+            border_mask[0:wave_height, x] = True
+        
+        # Нижняя граница  
+        for x in range(width):
+            wave_height = border_width - int(amplitude * math.sin(x * frequency + math.pi))
+            border_mask[height - wave_height:height, x] = True
+        
+        # Левая граница
+        for y in range(height):
+            wave_width = border_width - int(amplitude * math.sin(y * frequency))
+            border_mask[y, 0:wave_width] = True
+        
+        # Правая граница
+        for y in range(height):
+            wave_width = border_width - int(amplitude * math.sin(y * frequency + math.pi))
+            border_mask[y, width - wave_width:width] = True
+        
+        # Применяем маску
+        if len(image.shape) == 3:
+            for channel in range(3):
+                bordered_image[:, :, channel][border_mask] = border_color[channel]
+        else:
+            bordered_image[border_mask] = border_color[0]
+
+    elif border_type == "zigzag":
+        # Зигзагообразная рамка
+        zigzag_period = border_width * 2
+        
+        for i in range(border_width):
+            # Верхняя граница
+            for x in range(width):
+                if (x // zigzag_period) % 2 == 0:
+                    if i < border_width:
+                        bordered_image[i, x] = border_color
+                else:
+                    if i < border_width // 2:
+                        bordered_image[i, x] = border_color
+            
+            # Нижняя граница
+            for x in range(width):
+                if (x // zigzag_period) % 2 == 1:
+                    if i < border_width:
+                        bordered_image[height - 1 - i, x] = border_color
+                else:
+                    if i < border_width // 2:
+                        bordered_image[height - 1 - i, x] = border_color
+            
+            # Левая граница
+            for y in range(height):
+                if (y // zigzag_period) % 2 == 0:
+                    if i < border_width:
+                        bordered_image[y, i] = border_color
+                else:
+                    if i < border_width // 2:
+                        bordered_image[y, i] = border_color
+            
+            # Правая граница
+            for y in range(height):
+                if (y // zigzag_period) % 2 == 1:
+                    if i < border_width:
+                        bordered_image[y, width - 1 - i] = border_color
+                else:
+                    if i < border_width // 2:
+                        bordered_image[y, width - 1 - i] = border_color
+
+    elif border_type == "dots":
+        # Точечная рамка
+        dot_spacing = border_width
+        
+        for i in range(0, border_width, 2):
+            # Верхняя граница
+            for x in range(0, width, dot_spacing):
+                bordered_image[i, x] = border_color
+            
+            # Нижняя граница
+            for x in range(0, width, dot_spacing):
+                bordered_image[height - 1 - i, x] = border_color
+            
+            # Левая граница
+            for y in range(0, height, dot_spacing):
+                bordered_image[y, i] = border_color
+            
+            # Правая граница
+            for y in range(0, height, dot_spacing):
+                bordered_image[y, width - 1 - i] = border_color
+
+    elif border_type == "triangles":
+        # Треугольная рамка
+        triangle_width = border_width * 2
+        
+        for i in range(border_width):
+            # Верхняя граница
+            for x in range(0, width, triangle_width):
+                triangle_height = min(border_width, triangle_width - abs(x % (triangle_width * 2) - triangle_width))
+                if i < triangle_height:
+                    bordered_image[i, x] = border_color
+            
+            # Нижняя граница
+            for x in range(0, width, triangle_width):
+                triangle_height = min(border_width, triangle_width - abs(x % (triangle_width * 2) - triangle_width))
+                if i < triangle_height:
+                    bordered_image[height - 1 - i, x] = border_color
+            
+            # Левая граница
+            for y in range(0, height, triangle_width):
+                triangle_height = min(border_width, triangle_width - abs(y % (triangle_width * 2) - triangle_width))
+                if i < triangle_height:
+                    bordered_image[y, i] = border_color
+            
+            # Правая граница
+            for y in range(0, height, triangle_width):
+                triangle_height = min(border_width, triangle_width - abs(y % (triangle_width * 2) - triangle_width))
+                if i < triangle_height:
+                    bordered_image[y, width - 1 - i] = border_color
+
+    else:
+        print(f"Неизвестный тип рамки: {border_type}")
+        return bordered_image
+
+    return bordered_image
+
 # ===== ДЕМОНСТРАЦИЯ ФУНКЦИЙ =====
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -181,12 +356,40 @@ if __name__ == "__main__":
                                    center_x - 50, center_y - 50, 
                                    200, 200, pixel_size=15)
         print("Пикселизация применена!")
+
+        print("\n=== Прямоугольная рамка ===")
+        bordered1 = add_rectangular_border(image, border_width=15, 
+                                         border_color=(0, 0, 255))
+
+        print("\n=== Фигурные рамки ===")
+        wave_border = add_decorative_border(image, border_width=25, 
+                                        border_color=(0, 255, 255),  # Желтый в BGR
+                                        border_type="wave")
         
-        cv2.imshow('Original', image)
-        cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
-        cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
-        cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
-        cv2.imshow('Pixelation', cv2.cvtColor(pixelated, cv2.COLOR_RGB2BGR))
+        zigzag_border = add_decorative_border(image, border_width=20,
+                                            border_color=(255, 0, 255),  # Пурпурный в BGR
+                                            border_type="zigzag")
+        
+        dots_border = add_decorative_border(image, border_width=15,
+                                        border_color=(0, 165, 255),  # Оранжевый в BGR
+                                        border_type="dots")
+        
+        triangles_border = add_decorative_border(image, border_width=30,
+                                            border_color=(255, 255, 0),  # Голубой в BGR
+                                            border_type="triangles")
+        
+        print("Фигурные рамки применены!")
+        
+        # cv2.imshow('Original', image)
+        # cv2.imshow('Resized', cv2.cvtColor(resized, cv2.COLOR_RGB2BGR))
+        # cv2.imshow('Sepia', cv2.cvtColor(sepia, cv2.COLOR_RGB2BGR))
+        # cv2.imshow('Vignette', cv2.cvtColor(vignette, cv2.COLOR_RGB2BGR))
+        # cv2.imshow('Pixelation', cv2.cvtColor(pixelated, cv2.COLOR_RGB2BGR))
+        # cv2.imshow('Red Border (15px)', bordered1)
+        cv2.imshow('Wave Border', wave_border)
+        cv2.imshow('Zigzag Border', zigzag_border)
+        cv2.imshow('Dots Border', dots_border)
+        cv2.imshow('Triangles Border', triangles_border)
 
         cv2.waitKey(0)
         cv2.destroyAllWindows()
