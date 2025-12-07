@@ -1,0 +1,17 @@
+# ignore large image folders
+data/imgs_MOV03478/
+data/images/
+data/photos/
+data/frames/
+*.jpg
+*.png
+
+# ignore model files
+*.weights
+*.pb
+*.bin
+*.xml
+
+# python cache
+__pycache__/
+*.pyc
