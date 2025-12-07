@@ -1,0 +1,46 @@
+# Примеры использования фильтров
+
+# ВНИМАНИЕ: Эти команды откроют окна с изображениями.
+# Нажмите любую клавишу в окне изображения для закрытия.
+
+# 1. Изменение разрешения (уменьшение в 2 раза)
+python main.py capybara.jpeg resize --scale 0.5
+
+# 2. Изменение разрешения (конкретный размер)
+python main.py capybara.jpeg resize --width 400 --height 300
+
+# 3. Эффект сепии (полная интенсивность)
+python main.py capybara.jpeg sepia --intensity 1.0
+
+# 4. Эффект сепии (50%)
+python main.py capybara.jpeg sepia --intensity 0.5
+
+# 5. Виньетка (средняя интенсивность)
+python main.py capybara.jpeg vignette --intensity 0.6
+
+# 6. Пикселизация (интерактивный режим - выделите область мышью)
+python main.py capybara.jpeg pixelate --pixel-size 15
+
+# 7. Простая рамка (черная, 30 пикселей)
+python main.py capybara.jpeg simple_frame --frame-width 30
+
+# 8. Простая рамка (золотая)
+python main.py capybara.jpeg simple_frame --frame-width 25 --color 0 215 255
+
+# 9. Фигурная рамка с волнами (золотая)
+python main.py capybara.jpeg decorative_frame --frame-style wave --frame-width 30 --color 0 215 255
+
+# 10. Фигурная рамка с волнами (синяя)
+python main.py capybara.jpeg decorative_frame --frame-style wave --frame-width 30 --color 255 0 0
+
+# 11. Фигурная рамка зигзаг (красная)
+python main.py capybara.jpeg decorative_frame --frame-style zigzag --frame-width 25 --color 0 0 255
+
+# 12. Блики объектива (автоматическое размещение)
+python main.py capybara.jpeg lens_flare --intensity 0.8
+
+# 13. Блики объектива (в конкретной точке)
+python main.py capybara.jpeg lens_flare --intensity 1.0
+
+# 14. Текстура акварельной бумаги
+python main.py capybara.jpeg watercolor --intensity 0.4

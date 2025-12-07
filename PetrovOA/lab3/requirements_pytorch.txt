@@ -1,0 +1,22 @@
+# PyTorch и связанные библиотеки для Vision Transformer классификатора
+# 
+# Установка для CPU (для инференса):
+# pip install -r requirements_pytorch.txt
+#
+# Установка для GPU (для обучения):
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# PyTorch (CPU версия, для GPU см. инструкцию выше)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Зависимости для работы с изображениями
+Pillow>=9.0.0
+
+# Прогресс-бары для обучения
+tqdm>=4.65.0
+
+# Уже должны быть установлены из основных requirements
+# opencv-python>=4.5.0
+# numpy>=1.21.0
+# scikit-learn>=1.0.0

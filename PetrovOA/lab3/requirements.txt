@@ -1,0 +1,10 @@
+# Базовые зависимости для классификатора Bag of Words (BoW)
+opencv-python>=4.5.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+joblib>=1.0.0
+
+# Для Vision Transformer (ViT) см. requirements_pytorch.txt
+# Установка PyTorch:
+# CPU: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# GPU: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118

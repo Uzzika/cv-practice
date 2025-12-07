@@ -1,0 +1,12 @@
+{
+  "class_names": [
+    "01_NizhnyNovgorodKremlin",
+    "04_ArkhangelskCathedral",
+    "08_PalaceOfLabor"
+  ],
+  "image_size": 224,
+  "learning_rate": 0.001,
+  "batch_size": 16,
+  "epochs": 20,
+  "model_type": "DINOv2-ViT-Small"
+}
