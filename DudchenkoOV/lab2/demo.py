@@ -34,7 +34,7 @@ def draw(image, detections):
         cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
 
         cv2.putText(image, f"{cname} {conf:.3f}",
-                    (x1, y1 - 5),
+                    (x1, max(0, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
     return image
 
@@ -49,7 +49,7 @@ def main():
                         help="Путь к разметке")
     parser.add_argument("--model",
                         default="yolov3",
-                        choices=["yolov3", "yolov4-tiny"],
+                        choices=["yolov3", "yolov4-tiny", "ssd"],
                         help="Модель детектора")
     parser.add_argument("--show", action="store_true",
                         help="Показывать окна с детекцией")
@@ -67,6 +67,11 @@ def main():
         model_paths = {
             "cfg": "./models/yolov4-tiny.cfg",
             "weights": "./models/yolov4-tiny.weights",
+        }
+    elif args.model == "ssd":
+        model_paths = {
+            "proto": "./models/deploy.prototxt",
+            "model": "./models/mobilenet_iter_73000.caffemodel",
         }
     else:
         raise ValueError("Unknown model")
