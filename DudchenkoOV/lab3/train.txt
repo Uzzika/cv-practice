@@ -39,6 +39,8 @@ NNSUDataset\01_NizhnyNovgorodKremlin\20250328_082824.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250328_082837.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\IMG_20250718_115614.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\IMG_20250718_121202.jpg
+ExtDataset\01_NizhnyNovgorodKremlin\7377598dba3c816bcda655d07bd4695d.jpeg
+ExtDataset\01_NizhnyNovgorodKremlin\a0636055cc7511602bb6f19adf76be51.jpeg
 NNSUDataset\04_ArkhangelskCathedral\20250216_162203.jpg
 NNSUDataset\04_ArkhangelskCathedral\20250227_150556.jpg
 NNSUDataset\04_ArkhangelskCathedral\20250227_150728.jpg
@@ -61,6 +63,8 @@ NNSUDataset\04_ArkhangelskCathedral\20250227_151306.jpg
 NNSUDataset\04_ArkhangelskCathedral\IMG_20250718_120218.jpg
 NNSUDataset\04_ArkhangelskCathedral\IMG_20250718_120442.jpg
 NNSUDataset\04_ArkhangelskCathedral\IMG_20250718_120618.jpg
+ExtDataset\04_ArkhangelskCathedral\6a20110a-f510-11ee-8c01-0ed4bc0a2cc0.1080x1440.jpeg
+ExtDataset\04_ArkhangelskCathedral\7b5c1248-fb2d-11ee-96fc-8665e0211562.1000x1350.jpeg
 NNSUDataset\08_PalaceOfLabor\20250216_155642.jpg
 NNSUDataset\08_PalaceOfLabor\20250227_152715.jpg
 NNSUDataset\08_PalaceOfLabor\20250227_152716.jpg
