@@ -17,8 +17,6 @@ class BaseDetector(ABC):
         pass
 
 
-# ====================== YOLOv3 Detector ======================
-
 class YOLOv3Detector(BaseDetector):
     """
     YOLOv3 COCO detector using OpenCV DNN.
@@ -39,7 +37,7 @@ class YOLOv3Detector(BaseDetector):
         self.nms_threshold = nms_threshold
         self.input_size = input_size
 
-        # Load YOLOv3 network
+        # Load YOLO network
         self.net = cv2.dnn.readNetFromDarknet(cfg_path, weights_path)
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -61,10 +59,10 @@ class YOLOv3Detector(BaseDetector):
     def detect(self, image: np.ndarray) -> List[Detection]:
         blob = cv2.dnn.blobFromImage(
             image,
-            scalefactor=1/255.0,
+            scalefactor=1 / 255.0,
             size=self.input_size,
             swapRB=True,
-            crop=False
+            crop=False,
         )
         self.net.setInput(blob)
         outputs = self.net.forward(self.output_layers)
@@ -119,9 +117,17 @@ class YOLOv3Detector(BaseDetector):
         return detections
 
 
-# ============ Detector Factory ============
+class YOLOv4TinyDetector(YOLOv3Detector):
+    """
+    YOLOv4-tiny в OpenCV настраивается так же, как YOLOv3:
+    тот же формат cfg/weights и те же выходы.
+    Просто используем другой cfg/weights.
+    """
+    pass
+
 
 def create_detector(model_name: str, model_paths):
+    # COCO классы
     coco_classes = [
         'person', 'bicycle', 'car', 'motorbike', 'aeroplane', 'bus',
         'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
@@ -143,6 +149,13 @@ def create_detector(model_name: str, model_paths):
 
     if model_name == "yolov3":
         return YOLOv3Detector(
+            cfg_path=model_paths["cfg"],
+            weights_path=model_paths["weights"],
+            class_names=coco_classes,
+            vehicle_classes=vehicle_classes,
+        )
+    elif model_name == "yolov4-tiny":
+        return YOLOv4TinyDetector(
             cfg_path=model_paths["cfg"],
             weights_path=model_paths["weights"],
             class_names=coco_classes,
