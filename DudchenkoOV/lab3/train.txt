@@ -1,4 +1,3 @@
-NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144821(0).jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144824.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144826.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144827.jpg

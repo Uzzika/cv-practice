@@ -43,3 +43,4 @@ NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144418.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144437.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144449.jpg
 NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144820.jpg
+NNSUDataset\01_NizhnyNovgorodKremlin\20250227_144821(0).jpg
