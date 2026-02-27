@@ -1,238 +1,207 @@
-# Практическая работа №2. Детектирование объектов на изображениях с использованием библиотеки OpenCV
+Практическая работа №2. Детектирование объектов на изображениях с использованием библиотеки OpenCV
+Цель работы
 
-## Цель работы
+Разработать приложение для детектирования транспортных средств на последовательности кадров видео с использованием обученных нейронных сетей из "зоопарка" моделей OpenCV (модуль cv2.dnn).
 
-Разработать приложение для детектирования транспортных средств на изображениях с использованием модуля `cv2.dnn` библиотеки OpenCV и предобученных нейросетевых моделей. Реализовать иерархию детекторов, визуализировать результаты и оценить качество по метрикам **TPR** и **FDR**.
+Реализовать:
 
----
+иерархию классов детекторов,
 
-## 1. Данные
+поддержку нескольких моделей,
 
-Для экспериментов использована последовательность кадров видеозаписи:
+предобработку входных изображений,
 
-* Кадры: `data/imgs_MOV03478/`
-* Разметка: `data/mov03478.txt`
+постобработку выхода сети,
 
-Формат разметки:
+вычисление метрик качества TPR и FDR,
 
-```
-frame_id CLASS x1 y1 x2 y2
-```
+визуализацию результатов.
 
-Пример:
-
-```
-0 CAR 339 82 446 169
-```
-
----
-
-## 2. Структура проекта
-
-```
+Структура проекта
 lab2/
-  demo.py               # Демонстрационное приложение
-  detectors.py          # Иерархия классов детекторов
-  metrics.py            # Реализация IoU, TPR, FDR
-  README.md             # Отчёт
-  
-  data/
-    imgs_MOV03478/      # Кадры
-    mov03478.txt        # Разметка
+│
+├── demo.py              # демонстрационное приложение
+├── detectors.py         # иерархия детекторов
+├── metrics.py           # IoU и вычисление TPR/FDR
+│
+├── models/
+│   ├── yolov3.cfg
+│   ├── yolov3.weights
+│   ├── yolov4-tiny.cfg
+│   ├── yolov4-tiny.weights
+│   ├── deploy.prototxt
+│   ├── mobilenet_iter_73000.caffemodel
+│   └── ssd_classes.txt
+│
+└── data/
+    ├── imgs_MOV03478/   # кадры видео
+    └── mov03478.txt     # разметка
+Используемые модели
 
-  models/
-    yolov3.cfg
-    yolov3.weights
-    yolov4-tiny.cfg
-    yolov4-tiny.weights
-    deploy.prototxt
-    mobilenet_iter_73000.caffemodel
-    ssd_classes.txt
-```
+В работе реализована поддержка трёх моделей:
 
----
+YOLOv3 (Darknet, COCO)
 
-## 3. Иерархия детекторов
+YOLOv4-tiny (Darknet, COCO)
 
-Все детекторы наследуются от абстрактного класса:
+SSD MobileNet (Caffe)
 
-```python
-class BaseDetector(ABC):
-    def __init__(self, class_names, vehicle_classes):
-        self.class_names = class_names
-        self.vehicle_classes = set(vehicle_classes)
-```
+Все модели подключаются через модуль cv2.dnn.
 
-Реализовано три детектора:
+Иерархия классов
+BaseDetector (абстрактный класс)
+    ├── YOLOv3Detector
+    ├── YOLOv4TinyDetector
+    └── SSDCaffeDetector
+BaseDetector
 
-* `YOLOv3Detector`
-* `YOLOv4TinyDetector`
-* `SSDCaffeDetector`
+Содержит:
 
-Выбор модели в `demo.py` осуществляется параметром:
+список классов модели
 
-```
---model {yolov3, yolov4-tiny, ssd}
-```
+список интересующих транспортных классов
 
----
+абстрактный метод detect()
 
-# 4. Модели и методы обработки
+Предобработка изображений
+1. YOLOv3 / YOLOv4-tiny
 
-## 4.1. YOLOv3 (COCO)
+Предобработка выполняется через cv2.dnn.blobFromImage:
 
-### Файлы модели:
+масштабирование к размеру 416×416
 
-* `models/yolov3.cfg`
-* `models/yolov3.weights`
+нормализация пикселей (деление на 255)
 
-### Предобработка:
+перестановка каналов BGR → RGB
 
-* размер входа: `416×416`
-* нормализация `1/255`
-* перестановка каналов BGR → RGB
-* формирование blob:
-
-```python
-blob = cv2.dnn.blobFromImage(img, 1/255.0, (416,416), swapRB=True, crop=False)
-```
-
-### Постобработка:
-
-* получение выходов YOLO-голов
-* выбор класса с максимальным score
-* фильтрация `confidence > threshold`
-* фильтрация по транспортным классам
-* вычисление `x1, y1, x2, y2`
-* NMS: `cv2.dnn.NMSBoxes`
-
----
-
-## 4.2. YOLOv4-tiny (COCO)
-
-### Файлы модели:
-
-* `models/yolov4-tiny.cfg`
-* `models/yolov4-tiny.weights`
-
-YOLOv4-tiny использует тот же формат обработки, что YOLOv3.
-
-### Предобработка:
-
-идентична YOLOv3
-
-### Постобработка:
-
-идентична YOLOv3
-
-**Преимущества:**  высокая скорость.
-
----
-
-## 4.3. SSD MobileNet (Caffe)
-
-### Файлы модели:
-
-* `deploy.prototxt`
-* `mobilenet_iter_73000.caffemodel`
-* `ssd_classes.txt`
-
-### Предобработка:
-
-```python
 blob = cv2.dnn.blobFromImage(
-    cv2.resize(img, (300,300)),
+    image,
+    scalefactor=1/255.0,
+    size=(416, 416),
+    swapRB=True,
+    crop=False
+)
+2. SSD MobileNet (Caffe)
+
+Используется другой формат входа:
+
+размер 300×300
+
+масштабирование 1/127.5
+
+вычитание среднего 127.5
+
+blob = cv2.dnn.blobFromImage(
+    cv2.resize(image, (300, 300)),
     scalefactor=0.007843,
-    size=(300,300),
+    size=(300, 300),
     mean=127.5
 )
-```
+Постобработка выхода сети
+YOLO
 
-### Постобработка:
+Выход сети представляет собой массив предсказаний:
 
-* анализ массива формы `[1, 1, N, 7]`
-* фильтрация по confidence
-* перевод нормированных координат в пиксельные
-* фильтрация транспортных классов
+[x_center, y_center, width, height, objectness, class_scores...]
 
----
+Алгоритм постобработки:
 
-# 5. Метрики качества
+Выбор класса с максимальной вероятностью
 
-## 5.1. IoU
+Проверка confidence > threshold
 
-[
-IoU = \frac{|B_{pred} \cap B_{gt}|}{|B_{pred} \cup B_{gt}|}
-]
+Перевод координат в формат (x1, y1, x2, y2)
 
-Порог IoU: **0.5**
+Применение NMS (cv2.dnn.NMSBoxes)
 
----
+Фильтрация по транспортным классам
 
-## 5.2. TP / FP / FN
+SSD
 
-* **TP** — модель нашла объект правильно
-* **FP** — лишний бокс
-* **FN** — объект не найден
+Выход имеет формат:
 
----
+[image_id, class_id, confidence, x1, y1, x2, y2]
 
-## 5.3. Итоговые показатели
+Алгоритм:
 
-[
-TPR = \frac{TP}{TP + FN}
-]
+Проверка confidence > threshold
 
-[
-FDR = \frac{FP}{TP + FP}
-]
+Перевод нормированных координат в пиксели
 
----
+Фильтрация по транспортным классам
 
-# 6. Приложение demo
+Сопоставление с разметкой
 
-Примеры запуска:
+Разметка имеет формат:
 
-```bash
-python demo.py --model yolov3 --show
-python demo.py --model yolov4-tiny --show
-python demo.py --model ssd --show
-```
+frame_id class_name x1 y1 x2 y2
+Алгоритм сопоставления:
 
-Выводит:
+Для каждого детектированного объекта:
 
-* TP, FP, FN по кадрам
-* суммарные TPR, FDR
-* визуализацию детекций
+сравнение класса
 
----
+вычисление IoU
 
-# 7. Результаты
+Выбор GT с максимальным IoU
 
-| Модель        | TPR   | FDR   |
-| ------------- | ----- | ----- |
-| YOLOv3        | 0.XXX | 0.XXX |
-| YOLOv4-tiny   | 0.XXX | 0.XXX |
-| SSD MobileNet | 0.XXX | 0.XXX |
+Если IoU ≥ порога (например 0.3):
 
-(вставьте реальные значения)
+True Positive
 
----
+Иначе:
 
-# 8. Выводы
+False Positive
 
-1. Реализовано приложение для детектирования транспорта.
-2. Использованы три модели: YOLOv3, YOLOv4-tiny, SSD.
-3. YOLOv3 — наилучшая точность.
-4. YOLOv4-tiny — оптимальный баланс.
-5. SSD — самая быстрая, но менее точная.
+Неиспользованные GT → False Negative
 
----
+Метрики качества
+1. TPR (True Positive Rate)
+TPR = TP / (TP + FN)
 
-# 9. Команды запуска
+Показывает долю правильно обнаруженных объектов.
 
-```bash
-python demo.py --model yolov3
-python demo.py --model yolov4-tiny
-python demo.py --model ssd
-```
+2. FDR (False Discovery Rate)
+FDR = FP / (TP + FP)
+
+Показывает долю ложных детекций среди всех обнаружений.
+
+Визуализация
+
+При запуске с флагом --show:
+
+Каждый bbox окрашен в цвет класса.
+
+Внутри bbox отображается:
+
+car 0.873
+
+Над bbox отображается:
+
+GT: car
+
+или
+
+GT: none
+Запуск программы
+YOLOv3
+python demo.py --model yolov3 --frames_dir ./data/imgs_MOV03478 --annotations ./data/mov03478.txt --show
+YOLOv4-tiny
+python demo.py --model yolov4-tiny --frames_dir ./data/imgs_MOV03478 --annotations ./data/mov03478.txt --show
+SSD
+python demo.py --model ssd --frames_dir ./data/imgs_MOV03478 --annotations ./data/mov03478.txt --show
+Полученные результаты:
+Model: yolov3
+TP: 19320, FP: 6672, FN: 972
+TPR = 0.9521
+FDR = 0.2567
+
+Model: yolov4-tiny
+TP: 18060, FP: 3711, FN: 2232
+TPR = 0.8900
+FDR = 0.1705
+
+Model: ssd
+TP: 11119, FP: 300, FN: 9173
+TPR = 0.5479
+FDR = 0.0263

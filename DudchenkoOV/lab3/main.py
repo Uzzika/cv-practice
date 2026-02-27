@@ -10,6 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.feature_extraction.text import TfidfTransformer
 
 # ====== Дополнительно для CNN ======
 import torch
@@ -26,7 +27,7 @@ def infer_label_from_path(rel_path: str) -> str:
     """
     Определяем класс по имени папки во втором уровне пути.
     Примеры:
-        NNSUDataset/01_NizhnyNovgorodKremlin/...
+        ExtDataset/01_NizhnyNovgorodKremlin/...
         ExtDataset/04_ArkhangelskCathedral/...
         ExtDataset/08_PalaceOfLabor/...
     """
@@ -39,34 +40,32 @@ def infer_label_from_path(rel_path: str) -> str:
     return class_dir
 
 
-def read_split_file(split_path: str, data_root: str) -> Tuple[List[str], List[str]]:
-    """
-    Чтение файла разбиения (train.txt или test.txt).
-    Формат:
-        <relative_path> [optional_label]
-    Если метка не указана, берётся из имени папки.
-    """
-    image_paths = []
-    labels = []
+def read_split_file(split_file, data_root):
+    samples = []
 
-    with open(split_path, "r", encoding="utf-8") as f:
+    with open(split_file, "r", encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if not line:
+            parts = line.strip().split()
+            if len(parts) == 0:
                 continue
-            parts = line.split()
-            rel_path = parts[0]
+
+            rel_path = parts[0].strip()
+
+            # Универсальная нормализация для Windows/Mac/Linux
+            rel_path = rel_path.replace("\\", "/")
+
+            full_path = os.path.join(data_root, rel_path)
+            full_path = os.path.normpath(full_path)
 
             if len(parts) > 1:
                 label = parts[1]
             else:
-                label = infer_label_from_path(rel_path)
+                # если метки нет в файле — извлекаем из имени папки
+                label = os.path.basename(os.path.dirname(rel_path))
 
-            full_path = os.path.join(data_root, rel_path)
-            image_paths.append(full_path)
-            labels.append(label)
+            samples.append((full_path, label))
 
-    return image_paths, labels
+    return samples
 
 # ---------------------------------------------------------------------
 # ВИЗУАЛИЗАЦИЯ ЭТАПОВ «МЕШКА СЛОВ»
@@ -153,6 +152,10 @@ def extract_descriptors(image_paths: List[str],
         if descs is None:
             print(f"[WARN] Нет ключевых точек: {path}")
             continue
+        if descs is not None:
+            descs = descs.astype(np.float32)
+            descs /= (descs.sum(axis=1, keepdims=True) + 1e-7)
+            descs = np.sqrt(descs)
         all_image_descs.append(descs)
         valid_paths.append(path)
 
@@ -160,7 +163,7 @@ def extract_descriptors(image_paths: List[str],
 
 
 def build_vocabulary(all_image_descs: List[np.ndarray],
-                     dictionary_size: int = 200,
+                     dictionary_size: int = 400,
                      batch_size: int = 1000,
                      random_state: int = 42) -> MiniBatchKMeans:
     all_descs = np.vstack(all_image_descs).astype(np.float32)
@@ -209,6 +212,7 @@ class BowImageClassifier:
         self.kmeans = None
         self.clf = None
         self.label_encoder = None
+        self.tfidf = None
 
     def fit(self,
             train_paths: List[str],
@@ -227,6 +231,9 @@ class BowImageClassifier:
 
         print("[INFO] Строим BoW-признаки для train...")
         X_train = compute_bow_histograms(train_descs, self.kmeans, self.dictionary_size)
+
+        self.tfidf = TfidfTransformer()
+        X_train = self.tfidf.fit_transform(X_train).toarray()
 
         # === ВИЗУАЛИЗАЦИЯ ЭТАПОВ BOW ===
         if len(valid_train_paths) > 0:
@@ -257,7 +264,11 @@ class BowImageClassifier:
         y_train = self.label_encoder.fit_transform(valid_train_labels)
 
         print("[INFO] Обучаем SVM-классификатор...")
-        self.clf = LinearSVC(random_state=42)
+        self.clf = LinearSVC(
+            C=5,
+            class_weight="balanced",
+            max_iter=10000
+        )
         self.clf.fit(X_train, y_train)
 
         print("[INFO] Обучение (BOW) завершено.")
@@ -271,6 +282,7 @@ class BowImageClassifier:
             raise RuntimeError("Не удалось извлечь дескрипторы ни для одного изображения в тесте.")
 
         X = compute_bow_histograms(descs, self.kmeans, self.dictionary_size)
+        X = self.tfidf.transform(X).toarray()
         y_pred = self.clf.predict(X)
         labels_pred = self.label_encoder.inverse_transform(y_pred)
         return labels_pred, valid_paths
@@ -307,8 +319,8 @@ def evaluate_bow_model(model: BowImageClassifier,
     y_pred_labels, valid_paths = model.predict(test_paths)
     y_true_labels = [path_to_label[p] for p in valid_paths]
 
-    le = LabelEncoder()
-    y_true = le.fit_transform(y_true_labels)
+    le = model.label_encoder
+    y_true = le.transform(y_true_labels)
     y_pred = le.transform(y_pred_labels)
 
     acc = accuracy_score(y_true, y_pred)
@@ -385,28 +397,25 @@ def create_dataloaders(train_paths, train_labels,
 
 
 def create_cnn_model(num_classes: int):
-    """
-    ResNet18 с переносом обучения:
-    - загружаем предобученные веса на ImageNet
-    - заменяем последний полносвязный слой под наше число классов
-    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[INFO] Используем устройство: {device}")
 
-    # Новые версии torchvision:
     try:
         weights = models.ResNet18_Weights.DEFAULT
         model = models.resnet18(weights=weights)
     except Exception:
-        # На случай старой версии
         model = models.resnet18(pretrained=True)
 
-    # Замораживаем все слои, кроме последнего
+    # Замораживаем всё
     for param in model.parameters():
         param.requires_grad = False
 
+    # 🔥 Размораживаем последний residual-блок
+    for param in model.layer4.parameters():
+        param.requires_grad = True
+
     in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)  # обучаем только последний слой
+    model.fc = nn.Linear(in_features, num_classes)
 
     model = model.to(device)
     return model, device
@@ -418,7 +427,10 @@ def train_cnn(model, device, train_loader,
     Обучение последнего слоя ResNet18.
     """
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.fc.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=lr
+    )
 
     model.train()
     for epoch in range(1, epochs + 1):
@@ -521,7 +533,7 @@ def parse_args():
     # Параметры BOW
     parser.add_argument("--detector", type=str, choices=["ORB", "SIFT"], default="ORB",
                         help="Тип детектора/дескриптора для мешка слов")
-    parser.add_argument("--dict_size", type=int, default=200,
+    parser.add_argument("--dict_size", type=int, default=1000,
                         help="Размер словаря визуальных слов (число кластеров)")
     # Общий путь к модели
     parser.add_argument("--model_path", type=str, default="model.bin",
@@ -541,8 +553,14 @@ def main():
     args = parse_args()
 
     print("[INFO] Загружаем train/test списки...")
-    train_paths, train_labels = read_split_file(args.train_split, args.data_dir)
-    test_paths, test_labels = read_split_file(args.test_split, args.data_dir)
+    train_samples = read_split_file(args.train_split, args.data_dir)
+    test_samples = read_split_file(args.test_split, args.data_dir)
+
+    train_paths = [s[0] for s in train_samples]
+    train_labels = [s[1] for s in train_samples]
+
+    test_paths = [s[0] for s in test_samples]
+    test_labels = [s[1] for s in test_samples]
 
     # -------------------- BOW --------------------
     if args.algo == "bow":

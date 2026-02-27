@@ -28,14 +28,31 @@ def get_color(name):
     return colors.get(name, (200, 200, 200))
 
 
-def draw(image, detections):
-    for cid, cname, conf, x1, y1, x2, y2 in detections:
+def draw(image, detections, gt_boxes, matches):
+    match_dict = {d: g for d, g in matches}
+
+    for det_idx, det in enumerate(detections):
+        class_id, cname, conf, x1, y1, x2, y2 = det
         color = get_color(cname)
+
         cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
 
+        # предсказанный класс + confidence (3 знака)
         cv2.putText(image, f"{cname} {conf:.3f}",
                     (x1, max(0, y1 - 5)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
+        # наблюдаемый (GT) класс — над прямоугольником
+        if det_idx in match_dict:
+            gt_class = gt_boxes[match_dict[det_idx]][0]
+            gt_text = f"GT: {gt_class}"
+        else:
+            gt_text = "GT: none"
+
+        cv2.putText(image, gt_text,
+                    (x1, max(0, y1 - 20)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
     return image
 
 
@@ -93,19 +110,25 @@ def main():
             print(f"[WARN] Cannot read {fpath}")
             continue
 
-        dets = detector.detect(img)
-        gt = annotations.get(idx, [])
+        detections = detector.detect(img)
+        frame_name = os.path.splitext(os.path.basename(fpath))[0]
+        try:
+            frame_id = int(frame_name)
+        except:
+            frame_id = idx  # fallback
 
-        tp, fp, fn = match_detections_to_gt(gt, dets)
+        gt_boxes = annotations.get(frame_id, [])
+
+        tp, fp, fn, matches = match_detections_to_gt(detections, gt_boxes)
         total_tp += tp
         total_fp += fp
         total_fn += fn
 
-        print(f"[{idx}] det={len(dets)}, gt={len(gt)}, TP={tp}, FP={fp}, FN={fn}")
+        print(f"[{idx}] det={len(detections)}, gt={len(gt_boxes)}, TP={tp}, FP={fp}, FN={fn}")
 
         if args.show:
             vis = img.copy()
-            vis = draw(vis, dets)
+            vis = draw(vis, detections, gt_boxes, matches)
             cv2.imshow(f"Detections ({args.model})", vis)
             if cv2.waitKey(1) & 0xFF == 27:
                 break

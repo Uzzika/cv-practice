@@ -35,38 +35,51 @@ def load_annotations_txt(path: str) -> Dict[int, List[Tuple[str, Box]]]:
     return ann
 
 
-def match_detections_to_gt(gt, dets, iou_thr=0.5):
-    tp = fp = fn = 0
+def match_detections_to_gt(detections, gt_boxes, iou_thr=0.3):
+    """
+    detections: [(class_id, class_name, conf, x1, y1, x2, y2)]
+    gt_boxes:   [(class_name, (x1, y1, x2, y2))]
 
-    used_gt = [False] * len(gt)
+    return: tp, fp, fn, matches[(det_index, gt_index)]
+    """
+    matched_gt = set()
+    matches = []
+    tp = 0
+    fp = 0
 
-    for det in dets:
-        _, cname, conf, x1, y1, x2, y2 = det
-        dbox = (x1, y1, x2, y2)
+    for det_idx, det in enumerate(detections):
+        det_class = det[1].strip().lower()
+        det_box = (det[3], det[4], det[5], det[6])
 
-        best_iou = 0
-        best_id = -1
+        best_iou = 0.0
+        best_gt_idx = -1
 
-        for i, (_, gt_box) in enumerate(gt):
-            if used_gt[i]:
+        for gt_idx, (gt_class, gt_box) in enumerate(gt_boxes):
+            gt_class = gt_class.strip().lower()
+            if gt_idx in matched_gt:
+                continue
+            # нормализация
+            det_class = det_class.strip().lower()
+            gt_class = gt_class.strip().lower()
+
+            # допускаем частичное совпадение
+            if det_class not in gt_class and gt_class not in det_class:
                 continue
 
-            cur = iou(dbox, gt_box)
-            if cur > best_iou:
-                best_iou = cur
-                best_id = i
+            iou_val = iou(det_box, gt_box)  # <-- правильная функция
+            if iou_val > best_iou:
+                best_iou = iou_val
+                best_gt_idx = gt_idx
 
         if best_iou >= iou_thr:
             tp += 1
-            used_gt[best_id] = True
+            matched_gt.add(best_gt_idx)
+            matches.append((det_idx, best_gt_idx))
         else:
             fp += 1
 
-    for used in used_gt:
-        if not used:
-            fn += 1
-
-    return tp, fp, fn
+    fn = len(gt_boxes) - len(matched_gt)
+    return tp, fp, fn, matches
 
 
 def compute_tpr_fdr(tp: int, fp: int, fn: int):

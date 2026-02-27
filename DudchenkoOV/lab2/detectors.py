@@ -28,7 +28,7 @@ class YOLOv3Detector(BaseDetector):
         weights_path: str,
         class_names: List[str],
         vehicle_classes: List[str],
-        conf_threshold: float = 0.5,
+        conf_threshold: float = 0.3,
         nms_threshold: float = 0.4,
         input_size: Tuple[int, int] = (416, 416),
     ):
@@ -39,8 +39,12 @@ class YOLOv3Detector(BaseDetector):
 
         # Load YOLO network
         self.net = cv2.dnn.readNetFromDarknet(cfg_path, weights_path)
+
         self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
         self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+
+        # отключаем Winograd (фикс OpenCV 4.7)
+        self.net.enableWinograd(False)
 
         # Output layers – support for new/old OpenCV
         try:
@@ -92,6 +96,11 @@ class YOLOv3Detector(BaseDetector):
 
                 x = int(center_x - w / 2)
                 y = int(center_y - h / 2)
+
+                x = max(0, x)
+                y = max(0, y)
+                w = max(0, w)
+                h = max(0, h)
 
                 boxes.append([x, y, w, h])
                 confidences.append(confidence)
